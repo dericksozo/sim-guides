@@ -53,9 +53,9 @@
                             <% } %>
                             <div class="item-info">
                                 <% if (token.tokenUrl) { %>
-                                    <p class="item-name"><a href="<%= token.tokenUrl %>" target="_blank" style="color: inherit; text-decoration: none;"><%= token.name %></a></p>
+                                    <p class="item-name"><a href="<%= token.tokenUrl %>" target="_blank" style="color: inherit; text-decoration: none;"><%= token.address === 'native' ? token.symbol : token.name %></a></p>
                                 <% } else { %>
-                                    <p class="item-name"><%= token.name %></p>
+                                    <p class="item-name"><%= token.address === 'native' ? token.symbol : token.name %></p>
                                 <% } %>
                                 <p class="item-sub-info"><span class="mono"><%= token.balanceFormatted %> <%= token.symbol %></span> on <%= token.chainName %></p>
                             </div>
