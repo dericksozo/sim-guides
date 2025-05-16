@@ -1,18 +1,16 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "wallet-ui/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "wallet-ui/server.js"
-    }
-  ],
-  "env": {
-    "DUNE_API_KEY": "process.env.DUNE_API_KEY"
+    "version": 2,
+    "builds": [
+      {
+        "src": "wallet-ui/server.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "wallet-ui/server.js"
+      }
+    ]
   }
-}
+  
