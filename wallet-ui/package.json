@@ -8,7 +8,10 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node index.js"
+    "dev": "node server.js",
+    "start": "node server.js"
   },
-  "type": "module"
+  "type": "module",
+  "main": "server.js",
+  "name": "sim-wallet-ui"
 }

@@ -230,8 +230,4 @@ app.get('/', async (req, res) => {
     res.render('index', viewData);
 });
 
-// --- Server Start ---
-app.listen(PORT, () => {
-    console.log(`SIM Wallet Dashboard server running on http://localhost:${PORT}`);
-    console.log(`Using chains: ${DEFAULT_CHAIN_IDS} by default.`);
-});
+export default app;
