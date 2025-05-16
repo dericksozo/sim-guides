@@ -13,6 +13,6 @@
     }
   ],
   "env": {
-    "DUNE_API_KEY": "@dune_api_key"
+    "DUNE_API_KEY": "process.env.DUNE_API_KEY"
   }
 }
