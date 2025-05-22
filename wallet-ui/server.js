@@ -155,7 +155,4 @@ app.get('/', async (req, res) => {
     });
 });
 
-// Start the server
-app.listen(3001, () => {
-    console.log(`Server running at http://localhost:3001`);
-});
+export default app;
