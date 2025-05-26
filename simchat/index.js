@@ -4,6 +4,9 @@ import { OpenAI } from 'openai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Set up __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -560,9 +563,9 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-//     console.log(`Server running on http://localhost:${PORT}`);
-// });
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
 
-export default app;
+// export default app;
