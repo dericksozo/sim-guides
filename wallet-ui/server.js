@@ -140,7 +140,7 @@ async function getWalletCollectibles(walletAddress, limit = 50) {
                                 'x-api-key': process.env.OPENSEA_API_KEY
                             }
                         });
-                        
+
                         if (openSeaResponse.ok) {
                             const openSeaData = await openSeaResponse.json();
                             return {
@@ -235,8 +235,8 @@ app.get('/', async (req, res) => {
     });
 });
 
-app.listen(3001, () => {
-    console.log('Server is running on port 3001');
-});
+// app.listen(3001, () => {
+//     console.log('Server is running on port 3001');
+// });
 
-// export default app;
+export default app;
