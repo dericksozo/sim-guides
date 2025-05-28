@@ -209,6 +209,52 @@ const functions = [
                 additionalProperties: false
             }
         }
+    },
+    {
+        type: "function",
+        function: {
+            name: "get_svm_token_balances",
+            description: "Get token balances for a Solana (SVM) address. Returns native and SPL token balances with USD values.",
+            parameters: {
+                type: "object",
+                properties: {
+                    address: {
+                        type: "string",
+                        description: "The Solana wallet address to get balances for (e.g., DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK)"
+                    },
+                    limit: {
+                        type: "number",
+                        description: "Maximum number of balances to return (default: 100)",
+                        default: 100
+                    },
+                    chains: {
+                        type: "string",
+                        description: "Comma-separated list of chains to include, or 'all' for all supported chains",
+                        default: "all"
+                    }
+                },
+                required: ["address"],
+                additionalProperties: false
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "get_svm_token_metadata",
+            description: "Get metadata for a Solana token mint address.",
+            parameters: {
+                type: "object",
+                properties: {
+                    mint: {
+                        type: "string",
+                        description: "The Solana token mint address (e.g., So11111111111111111111111111111111111111112)"
+                    }
+                },
+                required: ["mint"],
+                additionalProperties: false
+            }
+        }
     }
 ];
 
@@ -235,24 +281,8 @@ async function get_token_balances(address, exclude_spam_tokens = true) {
         }
 
         const data = await response.json();
-        
-        // Summarize the data to reduce token usage
-        const summary = {
-            wallet_address: data.wallet_address,
-            total_balances: data.balances?.length || 0,
-            balances: data.balances?.slice(0, 10).map(balance => ({
-                symbol: balance.symbol,
-                amount: balance.amount,
-                value_usd: balance.value_usd,
-                chain: balance.chain
-            })) || []
-        };
-        
-        if (data.balances?.length > 10) {
-            summary.note = `Showing top 10 of ${data.balances.length} total balances`;
-        }
-        
-        return JSON.stringify(summary);
+
+        return JSON.stringify(data);
     } catch (error) {
         return JSON.stringify({ error: error.message });
     }
@@ -272,21 +302,8 @@ async function get_wallet_activity(address, limit = 25) {
         }
 
         const data = await response.json();
-        
-        // Summarize activity data
-        const summary = {
-            wallet_address: data.wallet_address || address,
-            total_activities: data.activity?.length || 0,
-            recent_activities: data.activity?.slice(0, 5).map(activity => ({
-                type: activity.type,
-                block_time: activity.block_time,
-                value_usd: activity.value_usd,
-                chain: activity.chain,
-                transaction_hash: activity.transaction_hash
-            })) || []
-        };
-        
-        return JSON.stringify(summary);
+
+        return JSON.stringify(data);
     } catch (error) {
         return JSON.stringify({ error: error.message });
     }
@@ -306,20 +323,8 @@ async function get_nft_collectibles(address, limit = 50) {
         }
 
         const data = await response.json();
-        
-        // Summarize NFT data
-        const summary = {
-            wallet_address: address,
-            total_collectibles: data.collectibles?.length || 0,
-            collectibles: data.collectibles?.slice(0, 5).map(nft => ({
-                name: nft.name,
-                collection: nft.collection?.name,
-                chain: nft.chain,
-                token_id: nft.token_id
-            })) || []
-        };
-        
-        return JSON.stringify(summary);
+
+        return JSON.stringify(data);
     } catch (error) {
         return JSON.stringify({ error: error.message });
     }
@@ -339,6 +344,7 @@ async function get_token_info(token_address, chain_ids = 'all') {
         }
 
         const data = await response.json();
+        console.log("what is data", data);
         return JSON.stringify(data);
     } catch (error) {
         return JSON.stringify({ error: error.message });
@@ -359,20 +365,8 @@ async function get_token_holders(chain_id, token_address, limit = 100) {
         }
 
         const data = await response.json();
-        
-        // Summarize holder data
-        const summary = {
-            token_address: token_address,
-            chain_id: chain_id,
-            total_holders: data.holders?.length || 0,
-            top_holders: data.holders?.slice(0, 5).map(holder => ({
-                address: holder.address,
-                balance: holder.balance,
-                percentage: holder.percentage
-            })) || []
-        };
-        
-        return JSON.stringify(summary);
+
+        return JSON.stringify(data);
     } catch (error) {
         return JSON.stringify({ error: error.message });
     }
@@ -392,21 +386,8 @@ async function get_transactions(address, limit = 25) {
         }
 
         const data = await response.json();
-        
-        // Summarize transaction data
-        const summary = {
-            wallet_address: address,
-            total_transactions: data.transactions?.length || 0,
-            recent_transactions: data.transactions?.slice(0, 5).map(tx => ({
-                hash: tx.hash,
-                block_time: tx.block_time,
-                value: tx.value,
-                gas_used: tx.gas_used,
-                chain: tx.chain
-            })) || []
-        };
-        
-        return JSON.stringify(summary);
+
+        return JSON.stringify(data);
     } catch (error) {
         return JSON.stringify({ error: error.message });
     }
@@ -432,6 +413,51 @@ async function get_supported_chains() {
     }
 }
 
+async function get_svm_token_balances(address, limit = 100, chains = 'all') {
+    try {
+        const queryParams = new URLSearchParams();
+        if (chains) queryParams.append('chains', chains);
+        if (limit) queryParams.append('limit', Math.min(limit, 20));
+        const response = await fetch(`https://api.sim.dune.com/beta/svm/balances/${address}?${queryParams}`,
+            {
+                headers: {
+                    'X-Sim-Api-Key': SIM_API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.statusText}`);
+        }
+        const data = await response.json();
+
+        return JSON.stringify(data);
+    } catch (error) {
+        return JSON.stringify({ error: error.message });
+    }
+}
+
+async function get_svm_token_metadata(mint) {
+    try {
+        const response = await fetch(`https://api.sim.dune.com/beta/svm/token-metadata/${mint}`,
+            {
+                headers: {
+                    'X-Sim-Api-Key': SIM_API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.statusText}`);
+        }
+        const data = await response.json();
+
+        return JSON.stringify(data);
+    } catch (error) {
+        return JSON.stringify({ error: error.message });
+    }
+}
+
 // Function router
 async function callFunction(name, args) {
     switch (name) {
@@ -449,6 +475,10 @@ async function callFunction(name, args) {
             return await get_transactions(args.address, args.limit);
         case 'get_supported_chains':
             return await get_supported_chains();
+        case 'get_svm_token_balances':
+            return await get_svm_token_balances(args.address, args.limit, args.chains);
+        case 'get_svm_token_metadata':
+            return await get_svm_token_metadata(args.mint);
         default:
             return JSON.stringify({ error: `Unknown function: ${name}` });
     }
@@ -500,7 +530,7 @@ app.post('/chat', async (req, res) => {
             messages: session.messages,
             tools: functions,
             tool_choice: "auto",
-            max_tokens: 1000 // Limit response tokens
+            max_tokens: 32768 // Limit response tokens
         });
 
         let assistantMessage = response.choices[0].message;
@@ -529,11 +559,11 @@ app.post('/chat', async (req, res) => {
             
             // Get final response from OpenAI
             const finalResponse = await openai.chat.completions.create({
-                model: "gpt-4.1",
+                model: "gpt-4.1-mini",
                 messages: session.messages,
                 tools: functions,
                 tool_choice: "auto",
-                max_tokens: 1000 // Limit response tokens
+                max_tokens: 32768 // Limit response tokens
             });
             
             assistantMessage = finalResponse.choices[0].message;
@@ -563,9 +593,9 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-//     console.log(`Server running on http://localhost:${PORT}`);
-// });
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
 
-export default app;
+// export default app;
