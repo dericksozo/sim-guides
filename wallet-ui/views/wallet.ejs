@@ -57,6 +57,22 @@
                             <p class="item-sub-info">
                                 <%= token.amountFormatted || token.amount %> <%= token.symbol %>
                             </p>
+                            <% /* 24h price change badge: only if token.price_usd exists and historical prices present */ %>
+                            <% if (typeof token.price_usd === 'number' && Array.isArray(token.historical_prices)) { %>
+                                <%
+                                    const d1 = priceUtils.change1h(token.price_usd, token.historical_prices);
+                                    const d6 = priceUtils.change6h(token.price_usd, token.historical_prices);
+                                    const d24 = priceUtils.change24h(token.price_usd, token.historical_prices);
+                                    const d24Text = priceUtils.formatSignedPercent(d24);
+                                    const badgeClass = d24 == null ? 'neutral' : (d24 >= 0 ? 'pos' : 'neg');
+                                %>
+                                <% if (d24 != null) { %>
+                                    <div class="price-delta-badges">
+                                        <span class="delta-badge <%= badgeClass %>"><%= d24Text %> 24h</span>
+                                        <% /* 1h/6h badges omitted for compact UI */ %>
+                                    </div>
+                                <% } %>
+                            <% } %>
                         </div>
                     </div>
                 <% }); %>

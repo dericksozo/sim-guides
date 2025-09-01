@@ -3,6 +3,7 @@ import numbro from 'numbro';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import * as priceUtils from './utils/prices.js';
 
 // Load environment variables
 dotenv.config();
@@ -55,13 +56,27 @@ async function getWalletActivity(walletAddress, limit = 25) { // Default to fetc
     }
 }
 
-async function getWalletBalances(walletAddress) {
+/**
+ * Fetch wallet balances. Optionally include historical prices for deltas (Tokens tab only).
+ * @param {string} walletAddress
+ * @param {{ includeHistoricalPrices?: boolean }} [options]
+ */
+async function getWalletBalances(walletAddress, options = {}) {
+    const { includeHistoricalPrices = false } = options;
     if (!walletAddress) return []; // Return empty if no address
 
     // Construct the query parameters
     // metadata=url,logo fetches token URLs and logo images
     // exclude_spam_tokens=true filters out known spam tokens
-    const queryParams = `metadata=url,logo&exclude_spam_tokens`;
+    const baseParams = new URLSearchParams({
+        'metadata': 'url,logo'
+    });
+    // Keep existing behavior; opt-in historical prices only for Tokens tab
+    if (includeHistoricalPrices) {
+        baseParams.set('historical_prices', '1,6,24');
+    }
+    // Preserve original boolean style for spam filter
+    const queryParams = `${baseParams.toString()}&exclude_spam_tokens`;
 
     const url = `https://api.sim.dune.com/v1/evm/balances/${walletAddress}?${queryParams}`;
 
@@ -199,8 +214,9 @@ app.get('/', async (req, res) => {
     if (walletAddress) {
         try {
 
+            const includeHistorical = tab === 'tokens';
             [tokens, activities, collectibles] = await Promise.all([
-                getWalletBalances(walletAddress),
+                getWalletBalances(walletAddress, { includeHistoricalPrices: includeHistorical }),
                 getWalletActivity(walletAddress, 25), // Fetching 25 recent activities
                 getWalletCollectibles(walletAddress, 50) // Fetching 50 collectibles
             ]);
@@ -231,12 +247,13 @@ app.get('/', async (req, res) => {
         tokens: tokens,
         activities: activities, // Placeholder for Guide 2
         collectibles: collectibles, // Now populated with actual data
-        errorMessage: errorMessage
+        errorMessage: errorMessage,
+        priceUtils
     });
 });
 
-// app.listen(3001, () => {
-//     console.log('Server is running on port 3001');
-// });
+app.listen(3001, () => {
+    console.log('Server is running on port 3001');
+});
 
-export default app;
+// export default app;
