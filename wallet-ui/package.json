@@ -9,7 +9,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "type": "module"
 }

@@ -3,6 +3,7 @@ import numbro from 'numbro';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { change1h, change6h, change24h, formatSignedPercent } from './utils/prices.js';
 
 // Load environment variables
 dotenv.config();
@@ -55,15 +56,22 @@ async function getWalletActivity(walletAddress, limit = 25) { // Default to fetc
     }
 }
 
-async function getWalletBalances(walletAddress) {
+async function getWalletBalances(walletAddress, { includeHistoricalPrices = false } = {}) {
     if (!walletAddress) return []; // Return empty if no address
 
     // Construct the query parameters
     // metadata=url,logo fetches token URLs and logo images
-    // exclude_spam_tokens=true filters out known spam tokens
-    const queryParams = `metadata=url,logo&exclude_spam_tokens`;
+    // exclude_spam_tokens filters out known spam tokens
+    const queryParts = [
+        'metadata=url,logo',
+        'exclude_spam_tokens'
+    ];
 
-    const url = `https://api.sim.dune.com/v1/evm/balances/${walletAddress}?${queryParams}`;
+    if (includeHistoricalPrices) {
+        queryParts.push('historical_prices=1,6,24');
+    }
+
+    const url = `https://api.sim.dune.com/v1/evm/balances/${walletAddress}?${queryParts.join('&')}`;
 
     try {
         const response = await fetch(url, {
@@ -83,13 +91,22 @@ async function getWalletBalances(walletAddress) {
 
         // Return formatted values and amounts
         return (data.balances || []).map(token => {
-            // 1. Calculate human-readable token amount
-            const numericAmount = parseFloat(token.amount) / Math.pow(10, parseInt(token.decimals));
-            // 2. Get numeric USD value
-            const numericValueUSD = parseFloat(token.value_usd);
-            // 3. Format using numbro
-            const valueUSDFormatted = numbro(numericValueUSD).format('$0,0.00');
-            const amountFormatted = numbro(numericAmount).format('0,0.[00]A');
+            // 1. Calculate human-readable token amount (defensive)
+            const decimalsNum = Number.parseInt(token.decimals);
+            const amountRaw = Number.parseFloat(token.amount);
+            const hasValidAmount = Number.isFinite(amountRaw) && Number.isFinite(decimalsNum) && decimalsNum >= 0;
+            const numericAmount = hasValidAmount ? (amountRaw / Math.pow(10, decimalsNum)) : null;
+
+            // 2. Get numeric USD value (defensive)
+            const numericValueUSD = token.value_usd != null ? Number(token.value_usd) : null;
+
+            // 3. Format using numbro only when valid
+            const valueUSDFormatted = (numericValueUSD != null && Number.isFinite(numericValueUSD))
+                ? numbro(numericValueUSD).format('$0,0.00')
+                : null;
+            const amountFormatted = (numericAmount != null && Number.isFinite(numericAmount))
+                ? numbro(numericAmount).format('0,0.[00]A')
+                : null;
 
             return {
                 ...token,
@@ -200,7 +217,7 @@ app.get('/', async (req, res) => {
         try {
 
             [tokens, activities, collectibles] = await Promise.all([
-                getWalletBalances(walletAddress),
+                getWalletBalances(walletAddress, { includeHistoricalPrices: tab === 'tokens' }),
                 getWalletActivity(walletAddress, 25), // Fetching 25 recent activities
                 getWalletCollectibles(walletAddress, 50) // Fetching 50 collectibles
             ]);
@@ -231,12 +248,18 @@ app.get('/', async (req, res) => {
         tokens: tokens,
         activities: activities, // Placeholder for Guide 2
         collectibles: collectibles, // Now populated with actual data
-        errorMessage: errorMessage
+        errorMessage: errorMessage,
+        // Helpers for EJS (Tokens tab will use these; other tabs unaffected)
+        change1h,
+        change6h,
+        change24h,
+        formatSignedPercent,
+        helpers: { change1h, change6h, change24h, formatSignedPercent }
     });
 });
 
-// app.listen(3001, () => {
-//     console.log('Server is running on port 3001');
-// });
+app.listen(3001, () => {
+    console.log('Server is running on port 3001');
+});
 
-export default app;
+// export default app;
