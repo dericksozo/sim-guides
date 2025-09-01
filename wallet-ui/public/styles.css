@@ -212,6 +212,24 @@
     margin: 0 0 3px 0;
     color: var(--color-text-primary);
     }
+    .price-delta-badges {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 4px;
+    }
+    .delta-badge {
+    font-family: var(--font-mono);
+    font-size: 0.75em;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border-secondary);
+    background: rgba(255,255,255,0.03);
+    color: var(--color-text-muted);
+    }
+    .delta-badge.pos { color: var(--color-accent-green); border-color: rgba(80, 227, 194, 0.5); }
+    .delta-badge.neg { color: var(--color-accent-red); border-color: rgba(255, 120, 117, 0.5); }
+    .delta-badge.neutral { color: var(--color-text-muted); }
     
     /* Activity Tab Specifics */
     .activity-direction { /* "Received ETH", "Sent USDC" */
