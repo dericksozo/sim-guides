@@ -57,6 +57,20 @@
                             <p class="item-sub-info">
                                 <%= token.amountFormatted || token.amount %> <%= token.symbol %>
                             </p>
+                            <% /* 24h change badge (Tokens tab only) */ %>
+                            <% if (currentTab === 'tokens') { 
+                                const price = typeof token.price_usd === 'number' ? token.price_usd : token.token_metadata?.price_usd;
+                                const hist = token.historical_prices || token.token_metadata?.historical_prices;
+                                const d24 = helpers?.change24h ? helpers.change24h(price, hist) : (typeof change24h === 'function' ? change24h(price, hist) : null);
+                                const showBadge = d24 != null && !token.low_liquidity && isFinite(d24);
+                                const badgeClass = d24 >= 0 ? 'badge-up' : 'badge-down';
+                            %>
+                                <% if (showBadge) { %>
+                                    <span class="badge <%= badgeClass %>">
+                                        <%= (helpers?.formatSignedPercent ? helpers.formatSignedPercent(d24) : (typeof formatSignedPercent === 'function' ? formatSignedPercent(d24) : '—')) %> 24h
+                                    </span>
+                                <% } %>
+                            <% } %>
                         </div>
                     </div>
                 <% }); %>
