@@ -57,20 +57,18 @@
                             <p class="item-sub-info">
                                 <%= token.amountFormatted || token.amount %> <%= token.symbol %>
                             </p>
-                            <% /* 24h price change badge: only if token.price_usd exists and historical prices present */ %>
-                            <% if (typeof token.price_usd === 'number' && Array.isArray(token.historical_prices)) { %>
-                                <%
-                                    const d1 = priceUtils.change1h(token.price_usd, token.historical_prices);
-                                    const d6 = priceUtils.change6h(token.price_usd, token.historical_prices);
-                                    const d24 = priceUtils.change24h(token.price_usd, token.historical_prices);
-                                    const d24Text = priceUtils.formatSignedPercent(d24);
-                                    const badgeClass = d24 == null ? 'neutral' : (d24 >= 0 ? 'pos' : 'neg');
-                                %>
-                                <% if (d24 != null) { %>
-                                    <div class="price-delta-badges">
-                                        <span class="delta-badge <%= badgeClass %>"><%= d24Text %> 24h</span>
-                                        <% /* 1h/6h badges omitted for compact UI */ %>
-                                    </div>
+                            <% /* 24h change badge (Tokens tab only) */ %>
+                            <% if (currentTab === 'tokens') { 
+                                const price = typeof token.price_usd === 'number' ? token.price_usd : token.token_metadata?.price_usd;
+                                const hist = token.historical_prices || token.token_metadata?.historical_prices;
+                                const d24 = helpers?.change24h ? helpers.change24h(price, hist) : (typeof change24h === 'function' ? change24h(price, hist) : null);
+                                const showBadge = d24 != null && !token.low_liquidity && isFinite(d24);
+                                const badgeClass = d24 >= 0 ? 'badge-up' : 'badge-down';
+                            %>
+                                <% if (showBadge) { %>
+                                    <span class="badge <%= badgeClass %>">
+                                        <%= (helpers?.formatSignedPercent ? helpers.formatSignedPercent(d24) : (typeof formatSignedPercent === 'function' ? formatSignedPercent(d24) : '—')) %> 24h
+                                    </span>
                                 <% } %>
                             <% } %>
                         </div>
@@ -206,11 +204,7 @@
             <% if (collectibles && collectibles.length > 0) { %>
                 <div class="collectibles-grid">
                     <% collectibles.forEach(collectible => { %>
-                        <% if (collectible.opensea_url) { %>
-                            <a href="<%= collectible.opensea_url %>" target="_blank" class="collectible-item-link">
-                        <% } else { %>
-                            <div class="collectible-item-link">
-                        <% } %>
+                        <div class="collectible-item-link">
                             <div class="collectible-item">
                                 <div class="collectible-image-container">
                                     <% if (collectible.image_url) { %>
@@ -230,11 +224,7 @@
                                     </div>
                                 </div>
                             </div>
-                        <% if (collectible.opensea_url) { %>
-                            </a>
-                        <% } else { %>
-                            </div>
-                        <% } %>
+                        </div>
                     <% }); %>
                 </div>
             <% } else if (walletAddress) { %>

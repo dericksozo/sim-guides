@@ -3,7 +3,7 @@ import numbro from 'numbro';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import * as priceUtils from './utils/prices.js';
+import { change1h, change6h, change24h, formatSignedPercent } from './utils/prices.js';
 
 // Load environment variables
 dotenv.config();
@@ -56,29 +56,22 @@ async function getWalletActivity(walletAddress, limit = 25) { // Default to fetc
     }
 }
 
-/**
- * Fetch wallet balances. Optionally include historical prices for deltas (Tokens tab only).
- * @param {string} walletAddress
- * @param {{ includeHistoricalPrices?: boolean }} [options]
- */
-async function getWalletBalances(walletAddress, options = {}) {
-    const { includeHistoricalPrices = false } = options;
+async function getWalletBalances(walletAddress, { includeHistoricalPrices = false } = {}) {
     if (!walletAddress) return []; // Return empty if no address
 
     // Construct the query parameters
     // metadata=url,logo fetches token URLs and logo images
-    // exclude_spam_tokens=true filters out known spam tokens
-    const baseParams = new URLSearchParams({
-        'metadata': 'url,logo'
-    });
-    // Keep existing behavior; opt-in historical prices only for Tokens tab
-    if (includeHistoricalPrices) {
-        baseParams.set('historical_prices', '1,6,24');
-    }
-    // Preserve original boolean style for spam filter
-    const queryParams = `${baseParams.toString()}&exclude_spam_tokens`;
+    // exclude_spam_tokens filters out known spam tokens
+    const queryParts = [
+        'metadata=url,logo',
+        'exclude_spam_tokens'
+    ];
 
-    const url = `https://api.sim.dune.com/v1/evm/balances/${walletAddress}?${queryParams}`;
+    if (includeHistoricalPrices) {
+        queryParts.push('historical_prices=1,6,24');
+    }
+
+    const url = `https://api.sim.dune.com/v1/evm/balances/${walletAddress}?${queryParts.join('&')}`;
 
     try {
         const response = await fetch(url, {
@@ -98,13 +91,22 @@ async function getWalletBalances(walletAddress, options = {}) {
 
         // Return formatted values and amounts
         return (data.balances || []).map(token => {
-            // 1. Calculate human-readable token amount
-            const numericAmount = parseFloat(token.amount) / Math.pow(10, parseInt(token.decimals));
-            // 2. Get numeric USD value
-            const numericValueUSD = parseFloat(token.value_usd);
-            // 3. Format using numbro
-            const valueUSDFormatted = numbro(numericValueUSD).format('$0,0.00');
-            const amountFormatted = numbro(numericAmount).format('0,0.[00]A');
+            // 1. Calculate human-readable token amount (defensive)
+            const decimalsNum = Number.parseInt(token.decimals);
+            const amountRaw = Number.parseFloat(token.amount);
+            const hasValidAmount = Number.isFinite(amountRaw) && Number.isFinite(decimalsNum) && decimalsNum >= 0;
+            const numericAmount = hasValidAmount ? (amountRaw / Math.pow(10, decimalsNum)) : null;
+
+            // 2. Get numeric USD value (defensive)
+            const numericValueUSD = token.value_usd != null ? Number(token.value_usd) : null;
+
+            // 3. Format using numbro only when valid
+            const valueUSDFormatted = (numericValueUSD != null && Number.isFinite(numericValueUSD))
+                ? numbro(numericValueUSD).format('$0,0.00')
+                : null;
+            const amountFormatted = (numericAmount != null && Number.isFinite(numericAmount))
+                ? numbro(numericAmount).format('0,0.[00]A')
+                : null;
 
             return {
                 ...token,
@@ -141,56 +143,14 @@ async function getWalletCollectibles(walletAddress, limit = 50) {
         const data = await response.json();
         const collectibles = data.entries || [];
 
-        // Enrich collectibles with OpenSea image data
-        const enrichedCollectibles = await Promise.all(
-            collectibles.map(async (collectible) => {
-                try {
-                    // Use the chain value directly from Sim APIs
-                    if (collectible.chain) {
-                        const openSeaUrl = `https://api.opensea.io/api/v2/chain/${collectible.chain}/contract/${collectible.contract_address}/nfts/${collectible.token_id}`;
-                        
-                        const openSeaResponse = await fetch(openSeaUrl, {
-                            headers: {
-                                'Accept': 'application/json',
-                                'x-api-key': process.env.OPENSEA_API_KEY
-                            }
-                        });
-
-                        if (openSeaResponse.ok) {
-                            const openSeaData = await openSeaResponse.json();
-                            return {
-                                ...collectible,
-                                image_url: openSeaData.nft?.image_url || null,
-                                opensea_url: openSeaData.nft?.opensea_url || null,
-                                description: openSeaData.nft?.description || null,
-                                collection_name: openSeaData.nft?.collection || collectible.name
-                            };
-                        }
-                    }
-                    
-                    // Return original collectible if OpenSea fetch fails or no chain info
-                    return {
-                        ...collectible,
-                        image_url: null,
-                        opensea_url: null,
-                        description: null,
-                        collection_name: collectible.name
-                    };
-                } catch (error) {
-                    console.error(`Error fetching OpenSea data for ${collectible.chain}:${collectible.contract_address}:${collectible.token_id}:`, error.message);
-                    return {
-                        ...collectible,
-                        image_url: null,
-                        opensea_url: null,
-                        description: null,
-                        collection_name: collectible.name
-                    };
-                }
-            })
-        );
-
-        // Filter out collectibles without images
-        return enrichedCollectibles.filter(collectible => collectible.image_url !== null);
+        // Use Sim APIs data directly - no need for external API calls
+        return collectibles.map(collectible => {
+            return {
+                ...collectible,
+                // Use collection_name field, fallback to name if not available
+                collection_name: collectible.name || `Token #${collectible.token_id}`
+            };
+        }).filter(collectible => collectible.image_url); // Only show collectibles with images
 
     } catch (error) {
         console.error("Error fetching wallet collectibles:", error.message);
@@ -214,9 +174,8 @@ app.get('/', async (req, res) => {
     if (walletAddress) {
         try {
 
-            const includeHistorical = tab === 'tokens';
             [tokens, activities, collectibles] = await Promise.all([
-                getWalletBalances(walletAddress, { includeHistoricalPrices: includeHistorical }),
+                getWalletBalances(walletAddress, { includeHistoricalPrices: tab === 'tokens' }),
                 getWalletActivity(walletAddress, 25), // Fetching 25 recent activities
                 getWalletCollectibles(walletAddress, 50) // Fetching 50 collectibles
             ]);
@@ -248,12 +207,17 @@ app.get('/', async (req, res) => {
         activities: activities, // Placeholder for Guide 2
         collectibles: collectibles, // Now populated with actual data
         errorMessage: errorMessage,
-        priceUtils
+        // Helpers for EJS (Tokens tab will use these; other tabs unaffected)
+        change1h,
+        change6h,
+        change24h,
+        formatSignedPercent,
+        helpers: { change1h, change6h, change24h, formatSignedPercent }
     });
 });
 
-app.listen(3001, () => {
-    console.log('Server is running on port 3001');
-});
+// app.listen(3001, () => {
+//     console.log('Server is running on port 3001');
+//});
 
-// export default app;
+export default app;
