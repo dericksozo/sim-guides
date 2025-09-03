@@ -6,15 +6,10 @@
     "numbro": "^2.5.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
-<<<<<<< HEAD
-    "start": "node index.js",
-    "dev": "node server.js"
-=======
     "start": "node server.js"
->>>>>>> upstream/collectibles-tab-update
   },
   "type": "module",
   "main": "server.js",
