@@ -212,7 +212,6 @@
     margin: 0 0 3px 0;
     color: var(--color-text-primary);
     }
-<<<<<<< HEAD
     .price-delta-badges {
     display: flex;
     gap: 6px;
@@ -231,36 +230,6 @@
     .delta-badge.pos { color: var(--color-accent-green); border-color: rgba(80, 227, 194, 0.5); }
     .delta-badge.neg { color: var(--color-accent-red); border-color: rgba(255, 120, 117, 0.5); }
     .delta-badge.neutral { color: var(--color-text-muted); }
-=======
-
-    /* Small badges for % change */
-    .badge {
-        display: inline-block;
-        margin-top: 4px;
-        padding: 2px 6px;
-        border-radius: 999px;
-        font-family: var(--font-mono);
-        font-size: 0.75em;
-        border: 1px solid var(--color-border-secondary);
-        color: var(--color-text-secondary);
-        background: rgba(255,255,255,0.04);
-    }
-    .badge-up {
-        border-color: rgba(80, 227, 194, 0.5);
-        color: var(--color-accent-green);
-        background: rgba(80, 227, 194, 0.08);
-    }
-    .badge-down {
-        border-color: rgba(255, 120, 117, 0.5);
-        color: var(--color-accent-red);
-        background: rgba(255, 120, 117, 0.08);
-    }
-    .badge-neutral {
-        border-color: var(--color-border-secondary);
-        color: var(--color-text-muted);
-        background: rgba(255,255,255,0.03);
-    }
->>>>>>> upstream/collectibles-tab-update
     
     /* Activity Tab Specifics */
     .activity-direction { /* "Received ETH", "Sent USDC" */
